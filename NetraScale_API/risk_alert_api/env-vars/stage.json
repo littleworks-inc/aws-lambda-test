@@ -1,0 +1,9 @@
+{
+  "Variables": {
+    "DB_HOST": "ra-stage-cc1-pg-db.cxai6y0ec948.ca-central-1.rds.amazonaws.com",
+    "DB_NAME": "riskact",
+    "DB_USER": "netrascaleadmin",
+    "DB_PASSWORD": "DB_PASSWORD",
+    "DB_PORT": "3306"
+  }
+}

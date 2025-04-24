@@ -95,11 +95,6 @@ jobs:
     - name: Install dependencies
       run: |
         pip install awscli pytest jq
-        
-        # # Install function-specific dependencies if requirements.txt exists
-        # if [ -f "${{ env.FUNCTION_PATH }}/requirements.txt" ]; then
-        #   pip install -r ${{ env.FUNCTION_PATH }}/requirements.txt -t ${{ env.FUNCTION_PATH }}/
-        # fi
 
     # - name: Configure AWS credentials
     #   uses: aws-actions/configure-aws-credentials@v3
@@ -127,17 +122,19 @@ jobs:
     - name: Load Environment Variables
       run: |
         echo "Loading environment variables for ${{ inputs.environment }}"
-        # First check if we have a dedicated env-vars directory at project level
-        ENV_VARS_DIR="${{ env.PROJECT_ROOT }}/env-vars"
-        LAMBDA_ENV_VARS_DIR="${{ env.FUNCTION_PATH }}/env-vars"
         
-        # Use function-specific env-vars if available, otherwise use project-level env-vars
-        if [ -d "$LAMBDA_ENV_VARS_DIR" ] && [ -f "$LAMBDA_ENV_VARS_DIR/${{ inputs.environment }}.json" ]; then
+        # Determine API category from the function path
+        API_CATEGORY="${{ inputs.api_category }}"
+        API_ENV_VARS_DIR="${{ env.PROJECT_ROOT }}/$API_CATEGORY/env-vars"
+        FUNCTION_ENV_VARS_DIR="${{ env.FUNCTION_PATH }}/env-vars"
+        
+        # First check for function-specific env-vars, then API-level env-vars, then config.json
+        if [ -d "$FUNCTION_ENV_VARS_DIR" ] && [ -f "$FUNCTION_ENV_VARS_DIR/${{ inputs.environment }}.json" ]; then
           echo "Using function-specific environment variables"
-          cp "$LAMBDA_ENV_VARS_DIR/${{ inputs.environment }}.json" /tmp/env-vars.json
-        elif [ -d "$ENV_VARS_DIR" ] && [ -f "$ENV_VARS_DIR/${{ inputs.environment }}.json" ]; then
-          echo "Using project-level environment variables"
-          cp "$ENV_VARS_DIR/${{ inputs.environment }}.json" /tmp/env-vars.json
+          cp "$FUNCTION_ENV_VARS_DIR/${{ inputs.environment }}.json" /tmp/env-vars.json
+        elif [ -d "$API_ENV_VARS_DIR" ] && [ -f "$API_ENV_VARS_DIR/${{ inputs.environment }}.json" ]; then
+          echo "Using API-level environment variables for $API_CATEGORY"
+          cp "$API_ENV_VARS_DIR/${{ inputs.environment }}.json" /tmp/env-vars.json
         elif [ -f "${{ env.FUNCTION_PATH }}/config.json" ]; then
           echo "Using config.json as environment variables"
           cp "${{ env.FUNCTION_PATH }}/config.json" /tmp/env-vars.json

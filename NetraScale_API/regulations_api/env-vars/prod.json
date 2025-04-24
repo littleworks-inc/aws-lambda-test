@@ -1,0 +1,7 @@
+{
+    "DB_HOST": "prod-db.example.com",
+    "DB_NAME": "prod_db",
+    "DB_USER": "prod_user",
+    "DB_PASSWORD": "DB_PASSWORD",
+    "DB_PORT": 3306
+  }
