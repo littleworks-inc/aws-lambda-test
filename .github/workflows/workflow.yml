@@ -1,7 +1,21 @@
-name: Deploy All Lambda Functions
+name: Deploy Lambda Function
 on:
   workflow_dispatch:
     inputs:
+      api_category:
+        description: "API category (dashboard_api, risk_alert_api, etc.)"
+        required: true
+        type: choice
+        options:
+          - dashboard_api
+          - risk_alert_api
+          - intelligence_api
+          - regulations_api
+          - evidence_api
+      function_name:
+        description: "Lambda function name (e.g., get_risk_score)"
+        required: true
+        type: string
       environment:
         description: "Target environment (stage, prod)"
         required: true
@@ -9,17 +23,6 @@ on:
         options:
           - stage
           - prod
-      api_category:
-        description: "API category to deploy (all, dashboard_api, risk_alert_api, etc.)"
-        required: true
-        type: choice
-        options:
-          - all
-          - dashboard_api
-          - risk_alert_api
-          - intelligence_api
-          - regulations_api
-          - evidence_api
 
 env:
   AWS_REGION: ca-central-1
@@ -31,45 +34,9 @@ permissions:
   contents: read
   
 jobs:
-  find_functions:
-    name: Find Lambda Functions
-    runs-on: ubuntu-latest
-    outputs:
-      function_paths: ${{ steps.set-paths.outputs.function_paths }}
-    
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v3
-
-    - name: Install jq
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y jq
-        
-    - name: Find Lambda Functions
-      id: set-paths
-      run: |
-        if [ "${{ inputs.api_category }}" == "all" ]; then
-          # Find all Lambda functions with app.py or lambda_function.py
-          FUNCTIONS=$(find ${PROJECT_ROOT} -type d -path "*/lambdas/*" -not -path "*/\.*" | sort)
-        else
-          # Find Lambda functions in the specific API category
-          FUNCTIONS=$(find ${PROJECT_ROOT}/${{ inputs.api_category }} -type d -path "*/lambdas/*" -not -path "*/\.*" | sort)
-        fi
-        
-        # Convert to JSON array for matrix
-        FUNCTIONS_JSON=$(echo "$FUNCTIONS" | jq -R . | jq -s .)
-        echo "function_paths=$FUNCTIONS_JSON" >> $GITHUB_OUTPUT
-        echo "Found functions: $FUNCTIONS_JSON"
-
   deploy:
-    name: Deploy Lambda Functions
-    needs: find_functions
+    name: Deploy Lambda to ${{ inputs.environment }}
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        function_path: ${{ fromJson(needs.find_functions.outputs.function_paths) }}
-      fail-fast: false
     
     steps:
     - name: Checkout
@@ -80,18 +47,23 @@ jobs:
       with:
         python-version: '3.13'
 
-    - name: Extract function name
-      id: extract_function_name
+    - name: Set function path and name
+      id: set_function_info
       run: |
-        # Extract the directory name as the function name
-        FUNCTION_PATH="${{ matrix.function_path }}"
+        # Construct full function path
+        FUNCTION_PATH="${{ env.PROJECT_ROOT }}/${{ inputs.api_category }}/lambdas/${{ inputs.function_name }}"
         echo "FUNCTION_PATH=$FUNCTION_PATH" >> $GITHUB_ENV
         
-        # Get the function name from the basename of the path
-        FUNCTION_NAME=$(basename "$FUNCTION_PATH")
-        echo "LAMBDA_FUNCTION_NAME=$FUNCTION_NAME" >> $GITHUB_ENV
-        echo "Function name: $FUNCTION_NAME"
+        # Set Lambda function name
+        echo "LAMBDA_FUNCTION_NAME=${{ inputs.function_name }}" >> $GITHUB_ENV
+        echo "Function name: ${{ inputs.function_name }}"
         echo "Function path: $FUNCTION_PATH"
+        
+        # Check if the function directory exists
+        if [ ! -d "$FUNCTION_PATH" ]; then
+          echo "Error: Function directory not found at $FUNCTION_PATH"
+          exit 1
+        fi
         
         # Determine the main handler file
         if [ -f "$FUNCTION_PATH/lambda_function.py" ]; then
@@ -205,9 +177,9 @@ jobs:
     #       aws lambda create-function --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
     #         --runtime python3.13 --role ${{ env.AWS_ROLE_TO_ASSUME }} \
     #         --handler ${{ env.HANDLER_FILE }}.${{ env.HANDLER_NAME }} --zip-file fileb:///tmp/function.zip \
-    #         --environment "$(cat /tmp/config.json)"
+    #         --environment "Variables=$(cat /tmp/config.json)"
 
-    #       # Add permission for API Gateway to invoke the Lambda function
+    #       # Add permission for API Gateway to invoke the Lambda function if needed
     #       STAGE_NAME=""
     #       if [ "${{ inputs.environment }}" == "stage" ]; then
     #         STAGE_NAME="v2"
@@ -235,7 +207,7 @@ jobs:
     #       echo "Updating Lambda function configuration..."
     #       aws lambda update-function-configuration \
     #         --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
-    #         --environment "$(cat /tmp/config.json)"
+    #         --environment "Variables=$(cat /tmp/config.json)"
     #     fi
 
     - name: Clean up
