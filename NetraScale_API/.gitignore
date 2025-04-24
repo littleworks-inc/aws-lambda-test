@@ -1,0 +1,23 @@
+# Python bytecode files
+*.pyc
+*.pyo
+__pycache__/
+
+# pytest cache
+.pytest_cache/
+
+# Distribution / packaging
+*.egg
+*.egg-info/
+dist/
+build/
+*.zip
+
+# Virtual environment
+venv/
+env/
+
+# Other
+*.log
+*.bak
+*.swp
