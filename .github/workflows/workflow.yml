@@ -54,7 +54,7 @@ jobs:
         FUNCTION_PATH="${{ env.PROJECT_ROOT }}/${{ inputs.api_category }}/lambdas/${{ inputs.function_name }}"
         echo "FUNCTION_PATH=$FUNCTION_PATH" >> $GITHUB_ENV
         
-        # Set Lambda function name
+        # Set Lambda function name - using the folder name as the function name
         echo "LAMBDA_FUNCTION_NAME=${{ inputs.function_name }}" >> $GITHUB_ENV
         echo "Function name: ${{ inputs.function_name }}"
         echo "Function path: $FUNCTION_PATH"
@@ -65,16 +65,31 @@ jobs:
           exit 1
         fi
         
-        # Determine the main handler file
-        if [ -f "$FUNCTION_PATH/lambda_function.py" ]; then
-          echo "HANDLER_FILE=lambda_function.py" >> $GITHUB_ENV
-          echo "HANDLER_NAME=lambda_handler" >> $GITHUB_ENV
-        elif [ -f "$FUNCTION_PATH/app.py" ]; then
+        # Determine the main handler file - prioritize app.py
+        if [ -f "$FUNCTION_PATH/app.py" ]; then
+          echo "Using app.py as handler file"
           echo "HANDLER_FILE=app.py" >> $GITHUB_ENV
           echo "HANDLER_NAME=lambda_handler" >> $GITHUB_ENV
         else
-          echo "No supported handler file found in $FUNCTION_PATH"
-          exit 1
+          # Look for any Python file with lambda_handler function as fallback
+          HANDLER_FOUND=false
+          for PY_FILE in $(find "$FUNCTION_PATH" -name "*.py" -not -name "__init__.py"); do
+            FILENAME=$(basename "$PY_FILE")
+            if grep -q "def lambda_handler" "$PY_FILE"; then
+              echo "Using $FILENAME as handler file"
+              echo "HANDLER_FILE=$FILENAME" >> $GITHUB_ENV
+              echo "HANDLER_NAME=lambda_handler" >> $GITHUB_ENV
+              HANDLER_FOUND=true
+              break
+            fi
+          done
+          
+          if [ "$HANDLER_FOUND" != "true" ]; then
+            echo "No handler file found in $FUNCTION_PATH"
+            echo "Available Python files:"
+            find "$FUNCTION_PATH" -name "*.py" -not -name "__init__.py"
+            exit 1
+          fi
         fi
 
     - name: Install dependencies
