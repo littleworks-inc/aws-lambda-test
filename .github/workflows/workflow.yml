@@ -281,7 +281,7 @@ jobs:
     #         --statement-id "AllowAPIGatewayInvoke" \
     #         --action "lambda:InvokeFunction" \
     #         --principal "apigateway.amazonaws.com" \
-    #         --source-arn "arn:aws:execute-api:ca-central-1:125655559748:h8kq61julj/${STAGE_NAME}"
+    #         --source-arn "${{ env.SOURCE_ARN }}"
     #     else
     #       echo "Updating Lambda function code..."
     #       aws lambda update-function-code \
