@@ -186,7 +186,7 @@ jobs:
           
           if [ "$FUNCTION_NAME" == "get_actionable_insights" ]; then
             echo "${{ vars.get_actionable_insights }}"
-            ROLE="${{ vars.get_actionable_insights }}"
+            echo "ROLE="${{ vars.get_actionable_insights }}""
             echo "Role: $ROLE"
           elif [ "$FUNCTION_NAME" == "get_financial_risks" ]; then
             ROLE="${{ vars.get_financial_risks }}"
