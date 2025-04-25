@@ -1,0 +1,7 @@
+{
+    "dashboard_api": "arn:aws:execute-api:ca-central-1:125655559748:h8kq61julj",
+    "evidence_api": "arn:aws:execute-api:ca-central-1:125655559748:evidence_api_gateway_id",
+    "intelligence_api": "arn:aws:execute-api:ca-central-1:125655559748:intelligence_api_gateway_id",
+    "regulations_api": "arn:aws:execute-api:ca-central-1:125655559748:regulations_api_gateway_id",
+    "risk_alert_api": "arn:aws:execute-api:ca-central-1:125655559748:risk_alert_api_gateway_id"
+  }
