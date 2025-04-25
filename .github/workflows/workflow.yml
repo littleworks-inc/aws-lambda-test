@@ -237,13 +237,16 @@ jobs:
           
           # Check if we got a role
           if [ -z "$ROLE" ]; then
-            echo "ERROR: No IAM role found in GitHub Variables for function $FUNCTION_NAME"
+            echo "ERROR: No IAM role found in GitHub Variables for function ${FUNCTION_NAME}"
             echo "Please create a repository/environment variable named '$FUNCTION_NAME' with the IAM role ARN"
             exit 1
           fi
           
           echo "Found IAM role for $FUNCTION_NAME"
-          echo "AWS_ROLE_TO_ASSUME=$ROLE" 
+          echo "AWS_ROLE_TO_ASSUME=$ROLE" >> $GITHUB_ENV
+
+           echo "Function Name: ${{ inputs.function_name }}"
+          echo "AWS_ROLE_TO_ASSUME: ${{ env.AWS_ROLE_TO_ASSUME }}"
 
     # - name: Check if Lambda function exists
     #   id: check_lambda
