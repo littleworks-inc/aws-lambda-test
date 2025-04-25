@@ -97,7 +97,6 @@ jobs:
         pip install awscli pytest jq
         echo "Role: ${{ vars.AWS_ROLE_TO_ASSUME }}"
         echo "Function path: ${{ inputs.function_name }}_Role"
-        echo "AWS_ROLE_TO_ASSUME=${{ vars[inputs.function_name] }}"
 
     # - name: Configure AWS credentials
     #   uses: aws-actions/configure-aws-credentials@v3
@@ -186,7 +185,9 @@ jobs:
           # This is a workaround since GitHub Actions doesn't support dynamic variable references
           
           if [ "$FUNCTION_NAME" == "get_actionable_insights" ]; then
+            echo "${{ vars.get_actionable_insights }}"
             ROLE="${{ vars.get_actionable_insights }}"
+            echo "Role: $ROLE"
           elif [ "$FUNCTION_NAME" == "get_financial_risks" ]; then
             ROLE="${{ vars.get_financial_risks }}"
           elif [ "$FUNCTION_NAME" == "get_news_feed" ]; then
@@ -242,7 +243,7 @@ jobs:
             exit 1
           fi
           
-          echo "Found IAM role for $FUNCTION_NAME"
+          echo "Function Name: ${{ inputs.function_name }}"
           echo "AWS_ROLE_TO_ASSUME=$ROLE" >> $GITHUB_ENV
 
            echo "Function Name: ${{ inputs.function_name }}"
