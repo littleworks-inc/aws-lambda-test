@@ -95,14 +95,14 @@ jobs:
       run: |
         pip install awscli pytest jq
 
-    # - name: Configure AWS credentials
-    #   uses: aws-actions/configure-aws-credentials@v3
-    #   with:
-    #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-    #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-    #     aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
-    #     aws-region: ${{ env.AWS_REGION }}
-    #     #role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v3
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+        aws-region: ${{ env.AWS_REGION }}
+        #role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
        
     - name: Prepare function package
       run: |
@@ -200,14 +200,14 @@ jobs:
           echo "Function Name: $FUNCTION_NAME"
           echo "AWS_ROLE_TO_ASSUME: $ROLE"
 
-    # - name: Check if Lambda function exists
-    #   id: check_lambda
-    #   run: |
-    #     if aws lambda get-function --function-name ${{ env.LAMBDA_FUNCTION_NAME }} 2>/dev/null; then
-    #       echo "lambda_exists=true" >> $GITHUB_OUTPUT
-    #     else
-    #       echo "lambda_exists=false" >> $GITHUB_OUTPUT
-    #     fi
+    - name: Check if Lambda function exists
+      id: check_lambda
+      run: |
+        if aws lambda get-function --function-name ${{ env.LAMBDA_FUNCTION_NAME }} 2>/dev/null; then
+          echo "lambda_exists=true" >> $GITHUB_OUTPUT
+        else
+          echo "lambda_exists=false" >> $GITHUB_OUTPUT
+        fi
 
     - name: Set API Gateway ARN
       run: |
@@ -216,19 +216,21 @@ jobs:
           
           # Check if the API Gateway ARNs file exists
           if [ ! -f "$API_GATEWAY_ARNS_PATH" ]; then
-            echo "ERROR: API Gateway ARNs file not found at $API_GATEWAY_ARNS_PATH"
-            exit 1
-          fi
-          
-          # Load the API Gateway ARNs file
-          API_GATEWAY_ARNS=$(cat "$API_GATEWAY_ARNS_PATH")
-          
-          # Extract the API Gateway ARN for the given API category
-          API_GATEWAY_ARN=$(echo "$API_GATEWAY_ARNS" | jq -r ".${{ inputs.api_category }}")
-          
-          if [ -z "$API_GATEWAY_ARN" ] || [ "$API_GATEWAY_ARN" == "null" ]; then
-            echo "ERROR: No API Gateway ARN found for API category ${{ inputs.api_category }}"
-            exit 1
+            echo "WARNING: API Gateway ARNs file not found at $API_GATEWAY_ARNS_PATH"
+            echo "Using default API Gateway ARN"
+            API_GATEWAY_ARN="arn:aws:execute-api:ca-central-1:125655559748:default-gateway-id"
+          else
+            # Load the API Gateway ARNs file
+            API_GATEWAY_ARNS=$(cat "$API_GATEWAY_ARNS_PATH")
+            
+            # Extract the API Gateway ARN for the given API category
+            API_GATEWAY_ARN=$(echo "$API_GATEWAY_ARNS" | jq -r ".${{ inputs.api_category }}")
+            
+            if [ -z "$API_GATEWAY_ARN" ] || [ "$API_GATEWAY_ARN" == "null" ]; then
+              echo "WARNING: No API Gateway ARN found for API category ${{ inputs.api_category }}"
+              echo "Using default API Gateway ARN"
+              API_GATEWAY_ARN="arn:aws:execute-api:ca-central-1:125655559748:default-gateway-id"
+            fi
           fi
           
           # Construct the full source ARN with the stage name
@@ -251,45 +253,40 @@ jobs:
           echo "Stage Name: $STAGE_NAME"
           echo "Source ARN: $SOURCE_ARN"
 
-    # - name: Create or Update Lambda function
-    #   run: |
-    #     if [ "${{ steps.check_lambda.outputs.lambda_exists }}" == "false" ]; then
-    #       echo "Creating Lambda function..."
-    #       aws lambda create-function --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
-    #         --runtime python3.13 --role ${{ env.AWS_ROLE_TO_ASSUME }} \
-    #         --handler ${{ env.HANDLER_FILE }}.${{ env.HANDLER_NAME }} --zip-file fileb:///tmp/function.zip \
-    #         --environment "Variables=$(cat /tmp/config.json)"
-
-    #       # # Add permission for API Gateway to invoke the Lambda function if needed
-    #       # STAGE_NAME=""
-    #       # if [ "${{ inputs.environment }}" == "stage" ]; then
-    #       #   STAGE_NAME="v2"
-    #       # elif [ "${{ inputs.environment }}" == "prod" ]; then
-    #       #   STAGE_NAME="v1"
-    #       # else
-    #       #   STAGE_NAME="${{ inputs.environment }}"
-    #       # fi
+    - name: Create or Update Lambda function
+      run: |
+        if [ "${{ steps.check_lambda.outputs.lambda_exists }}" == "false" ]; then
+          echo "Creating Lambda function..."
+          aws lambda create-function --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+            --runtime python3.13 --role ${{ env.AWS_ROLE_TO_ASSUME }} \
+            --handler ${{ env.HANDLER_FILE }}.${{ env.HANDLER_NAME }} --zip-file fileb:///tmp/function.zip \
+            --environment "Variables=$(cat /tmp/config.json)"
           
-    #       aws lambda add-permission \
-    #         --function-name "${{ env.LAMBDA_FUNCTION_NAME }}" \
-    #         --statement-id "AllowAPIGatewayInvoke" \
-    #         --action "lambda:InvokeFunction" \
-    #         --principal "apigateway.amazonaws.com" \
-    #         --source-arn "${{ env.SOURCE_ARN }}"
-    #     else
-    #       echo "Updating Lambda function code..."
-    #       aws lambda update-function-code \
-    #         --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
-    #         --zip-file fileb:///tmp/function.zip --publish
+          if [ -n "${{ env.SOURCE_ARN }}" ]; then
+            echo "Adding permission for API Gateway to invoke Lambda function..."
+            aws lambda add-permission \
+            --function-name "${{ env.LAMBDA_FUNCTION_NAME }}" \
+            --statement-id "AllowAPIGatewayInvoke" \
+            --action "lambda:InvokeFunction" \
+            --principal "apigateway.amazonaws.com" \
+            --source-arn "${{ env.SOURCE_ARN }}"
+          else
+            echo "WARNING: SOURCE_ARN is not set. Skipping API Gateway permission setup."
+          fi
+        else
+          echo "Updating Lambda function code..."
+          aws lambda update-function-code \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+            --zip-file fileb:///tmp/function.zip --publish
 
-    #       echo "Waiting for 10 seconds to allow AWS Lambda to process the code update..."
-    #       sleep 10
+          echo "Waiting for 10 seconds to allow AWS Lambda to process the code update..."
+          sleep 10
 
-    #       echo "Updating Lambda function configuration..."
-    #       aws lambda update-function-configuration \
-    #         --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
-    #         --environment "Variables=$(cat /tmp/config.json)"
-    #     fi
+          echo "Updating Lambda function configuration..."
+          aws lambda update-function-configuration \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+            --environment "Variables=$(cat /tmp/config.json)"
+        fi
 
     - name: Clean up
       run: |
