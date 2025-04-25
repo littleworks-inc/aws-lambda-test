@@ -120,57 +120,51 @@ jobs:
 
     - name: Load Environment Variables
       run: |
-        echo "Loading environment variables for ${{ inputs.environment }}"
-        
-        # Determine API category from the function path
-        API_CATEGORY="${{ inputs.api_category }}"
-        API_ENV_VARS_DIR="${{ env.PROJECT_ROOT }}/$API_CATEGORY/env-vars"
-        FUNCTION_ENV_VARS_DIR="${{ env.FUNCTION_PATH }}/env-vars"
-        
-        # First check for function-specific env-vars, then API-level env-vars, then config.json
-        if [ -d "$FUNCTION_ENV_VARS_DIR" ] && [ -f "$FUNCTION_ENV_VARS_DIR/${{ inputs.environment }}.json" ]; then
-          echo "Using function-specific environment variables"
-          cp "$FUNCTION_ENV_VARS_DIR/${{ inputs.environment }}.json" /tmp/env-vars.json
-        elif [ -d "$API_ENV_VARS_DIR" ] && [ -f "$API_ENV_VARS_DIR/${{ inputs.environment }}.json" ]; then
-          echo "Using API-level environment variables for $API_CATEGORY"
-          cp "$API_ENV_VARS_DIR/${{ inputs.environment }}.json" /tmp/env-vars.json
-        elif [ -f "${{ env.FUNCTION_PATH }}/config.json" ]; then
-          echo "Using config.json as environment variables"
-          cp "${{ env.FUNCTION_PATH }}/config.json" /tmp/env-vars.json
-        else
-          echo "No environment variables found, using empty config"
-          echo "{}" > /tmp/env-vars.json
-        fi
-        
-        # Replace sensitive values if needed
-        if [ "${{ inputs.environment }}" == "prod" ]; then
-          # Add any prod-specific variable replacements here
-          if grep -q "DB_PASSWORD" /tmp/env-vars.json; then
-            sed -i 's/"DB_PASSWORD": *"[^"]*"/"DB_PASSWORD": "${{ secrets.PROD_DB_PASSWORD }}"/' /tmp/env-vars.json
+          echo "Loading environment variables for ${{ inputs.environment }}"
+          
+          # Determine API category from the function path
+          API_CATEGORY="${{ inputs.api_category }}"
+          API_ENV_VARS_DIR="${{ env.PROJECT_ROOT }}/$API_CATEGORY/env-vars"
+          FUNCTION_ENV_VARS_DIR="${{ env.FUNCTION_PATH }}/env-vars"
+          
+          # First check for function-specific env-vars, then API-level env-vars, then config.json
+          if [ -d "$FUNCTION_ENV_VARS_DIR" ] && [ -f "$FUNCTION_ENV_VARS_DIR/${{ inputs.environment }}.json" ]; then
+            echo "Using function-specific environment variables"
+            cp "$FUNCTION_ENV_VARS_DIR/${{ inputs.environment }}.json" /tmp/env-vars.json
+          elif [ -d "$API_ENV_VARS_DIR" ] && [ -f "$API_ENV_VARS_DIR/${{ inputs.environment }}.json" ]; then
+            echo "Using API-level environment variables for $API_CATEGORY"
+            cp "$API_ENV_VARS_DIR/${{ inputs.environment }}.json" /tmp/env-vars.json
+          elif [ -f "${{ env.FUNCTION_PATH }}/config.json" ]; then
+            echo "Using config.json as environment variables"
+            cp "${{ env.FUNCTION_PATH }}/config.json" /tmp/env-vars.json
+          else
+            echo "No environment variables found, using empty config"
+            echo "{}" > /tmp/env-vars.json
           fi
           
-          # Add more prod secrets as needed
-          # if grep -q "API_KEY" /tmp/env-vars.json; then
-          #   sed -i 's/"API_KEY": *"[^"]*"/"API_KEY": "${{ secrets.PROD_API_KEY }}"/' /tmp/env-vars.json
-          # fi
-          
-          echo "Applied prod environment variables"
-        elif [ "${{ inputs.environment }}" == "stage" ]; then
-          # Add any stage-specific variable replacements here
-          if grep -q "DB_PASSWORD" /tmp/env-vars.json; then
-            sed -i 's/"DB_PASSWORD": *"[^"]*"/"DB_PASSWORD": "${{ secrets.STAGE_DB_PASSWORD }}"/' /tmp/env-vars.json
+          # Replace DB_PASSWORD placeholder with the actual secret value
+          if [ "${{ inputs.environment }}" == "prod" ]; then
+            if grep -q "DB_PASSWORD" /tmp/env-vars.json; then
+              sed -i 's/"DB_PASSWORD": *"[^"]*"/"DB_PASSWORD": "'"${{ secrets.PROD_DB_PASSWORD }}"'"/' /tmp/env-vars.json
+            fi
+          elif [ "${{ inputs.environment }}" == "stage" ]; then
+            if grep -q "DB_PASSWORD" /tmp/env-vars.json; then
+              sed -i 's/"DB_PASSWORD": *"[^"]*"/"DB_PASSWORD": "'"${{ secrets.STAGE_DB_PASSWORD }}"'"/' /tmp/env-vars.json
+            fi
           fi
           
-          # Add more stage secrets as needed
-          # if grep -q "API_KEY" /tmp/env-vars.json; then
-          #   sed -i 's/"API_KEY": *"[^"]*"/"API_KEY": "${{ secrets.STAGE_API_KEY }}"/' /tmp/env-vars.json
-          # fi
+          # Validate the JSON file
+          if ! jq empty /tmp/env-vars.json; then
+            echo "Invalid JSON file: /tmp/env-vars.json"
+            exit 1
+          fi
           
-          echo "Applied stage environment variables"
-        fi
-        
-        # Format for AWS Lambda environment variables
-        jq -c '{"Variables": .}' /tmp/env-vars.json > /tmp/config.json
+          # Directly copy the JSON file to /tmp/config.json (no need for jq transformation)
+          cp /tmp/env-vars.json /tmp/config.json
+
+          cat  /tmp/config.json
+          
+          echo "Environment variables loaded successfully"
       
     - name: Set IAM Role from Mapping File
       run: |
