@@ -175,8 +175,8 @@ jobs:
         # Format for AWS Lambda environment variables
         jq -c '{"Variables": .}' /tmp/env-vars.json > /tmp/config.json
       
-        - name: Set IAM Role from Mapping File
-        run: |
+    - name: Set IAM Role from Mapping File
+      run: |
           # Determine the path to the roles mapping file based on the environment
           ROLES_MAPPING_PATH="${{ env.PROJECT_ROOT }}/${{ inputs.api_category }}/env-vars/roles_mapping.${{ inputs.environment }}.json"
           
