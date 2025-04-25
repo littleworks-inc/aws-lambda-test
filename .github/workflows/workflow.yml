@@ -26,7 +26,7 @@ on:
 
 env:
   AWS_REGION: ca-central-1
-  AWS_ROLE_TO_ASSUME: arn:aws:iam::125655559748:role/service-role/get_risk_score-role-86ng99js
+  # AWS_ROLE_TO_ASSUME: arn:aws:iam::125655559748:role/service-role/get_risk_score-role-86ng99js
   PROJECT_ROOT: NetraScale_API
   
 permissions:
@@ -95,6 +95,7 @@ jobs:
     - name: Install dependencies
       run: |
         pip install awscli pytest jq
+        echo "Role: ${{ env.AWS_ROLE_TO_ASSUME }}"
 
     # - name: Configure AWS credentials
     #   uses: aws-actions/configure-aws-credentials@v3
