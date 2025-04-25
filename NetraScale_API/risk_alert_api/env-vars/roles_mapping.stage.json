@@ -1,0 +1,6 @@
+{
+    "get_actionable_insights": "arn:aws:iam::123456789012:role/get_actionable_insights-role",
+    "get_financial_risks": "arn:aws:iam::123456789012:role/get_financial_risks-role",
+    "get_news_feed": "arn:aws:iam::123456789012:role/get_news_feed-role"
+
+}
