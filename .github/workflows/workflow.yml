@@ -97,7 +97,7 @@ jobs:
         pip install awscli pytest jq
         echo "Role: ${{ vars.AWS_ROLE_TO_ASSUME }}"
         echo "Function path: ${{ inputs.function_name }}_Role"
-        echo "AWS_ROLE_TO_ASSUME=${{ vars[inputs.function_name] }}" >> $GITHUB_ENV
+        echo "AWS_ROLE_TO_ASSUME=${{ vars[inputs.function_name] }}"
 
     # - name: Configure AWS credentials
     #   uses: aws-actions/configure-aws-credentials@v3
