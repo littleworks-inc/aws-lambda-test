@@ -175,6 +175,75 @@ jobs:
         
         # Format for AWS Lambda environment variables
         jq -c '{"Variables": .}' /tmp/env-vars.json > /tmp/config.json
+      
+    - name: Set IAM Role from GitHub Variables
+      run: |
+          # Get function name
+          FUNCTION_NAME="${{ inputs.function_name }}"
+          echo "Looking for IAM role for: $FUNCTION_NAME"
+          
+          # Use conditional expressions to check each possible function name
+          # This is a workaround since GitHub Actions doesn't support dynamic variable references
+          
+          if [ "$FUNCTION_NAME" == "get_actionable_insights" ]; then
+            ROLE="${{ vars.get_actionable_insights }}"
+          elif [ "$FUNCTION_NAME" == "get_financial_risks" ]; then
+            ROLE="${{ vars.get_financial_risks }}"
+          elif [ "$FUNCTION_NAME" == "get_news_feed" ]; then
+            ROLE="${{ vars.get_news_feed }}"
+          elif [ "$FUNCTION_NAME" == "get_overall_risk_score" ]; then
+            ROLE="${{ vars.get_overall_risk_score }}"
+          elif [ "$FUNCTION_NAME" == "get_potential_exploits" ]; then
+            ROLE="${{ vars.get_potential_exploits }}"
+          elif [ "$FUNCTION_NAME" == "get_risk_score_trend" ]; then
+            ROLE="${{ vars.get_risk_score_trend }}"
+          elif [ "$FUNCTION_NAME" == "get_risk_severity_summary" ]; then
+            ROLE="${{ vars.get_risk_severity_summary }}"
+          elif [ "$FUNCTION_NAME" == "collect_evidence" ]; then
+            ROLE="${{ vars.collect_evidence }}"
+          elif [ "$FUNCTION_NAME" == "get_attack_analysis" ]; then
+            ROLE="${{ vars.get_attack_analysis }}"
+          elif [ "$FUNCTION_NAME" == "get_attack_catalog" ]; then
+            ROLE="${{ vars.get_attack_catalog }}"
+          elif [ "$FUNCTION_NAME" == "get_common_threat_summary" ]; then
+            ROLE="${{ vars.get_common_threat_summary }}"
+          elif [ "$FUNCTION_NAME" == "get_sample_incident" ]; then
+            ROLE="${{ vars.get_sample_incident }}"
+          elif [ "$FUNCTION_NAME" == "get_regulation_information" ]; then
+            ROLE="${{ vars.get_regulation_information }}"
+          elif [ "$FUNCTION_NAME" == "get_regulation_stats" ]; then
+            ROLE="${{ vars.get_regulation_stats }}"
+          elif [ "$FUNCTION_NAME" == "get_historical_risk_score" ]; then
+            ROLE="${{ vars.get_historical_risk_score }}"
+          elif [ "$FUNCTION_NAME" == "get_match_score" ]; then
+            ROLE="${{ vars.get_match_score }}"
+          elif [ "$FUNCTION_NAME" == "get_mitigation_actions" ]; then
+            ROLE="${{ vars.get_mitigation_actions }}"
+          elif [ "$FUNCTION_NAME" == "get_regulatory_assessment" ]; then
+            ROLE="${{ vars.get_regulatory_assessment }}"
+          elif [ "$FUNCTION_NAME" == "get_risk_factor_breakdown" ]; then
+            ROLE="${{ vars.get_risk_factor_breakdown }}"
+          elif [ "$FUNCTION_NAME" == "get_risk_score" ]; then
+            ROLE="${{ vars.get_risk_score }}"
+          elif [ "$FUNCTION_NAME" == "get_threat_attacks" ]; then
+            ROLE="${{ vars.get_threat_attacks }}"
+          elif [ "$FUNCTION_NAME" == "update_mitigation_actions_status" ]; then
+            ROLE="${{ vars.update_mitigation_actions_status }}"
+          else
+            echo "ERROR: No condition found for function $FUNCTION_NAME"
+            echo "Please update the workflow to include this function name"
+            exit 1
+          fi
+          
+          # Check if we got a role
+          if [ -z "$ROLE" ]; then
+            echo "ERROR: No IAM role found in GitHub Variables for function $FUNCTION_NAME"
+            echo "Please create a repository/environment variable named '$FUNCTION_NAME' with the IAM role ARN"
+            exit 1
+          fi
+          
+          echo "Found IAM role for $FUNCTION_NAME"
+          echo "AWS_ROLE_TO_ASSUME=$ROLE" 
 
     # - name: Check if Lambda function exists
     #   id: check_lambda
